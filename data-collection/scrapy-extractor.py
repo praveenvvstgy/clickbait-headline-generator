@@ -2,6 +2,12 @@ from scrapy.spiders import Spider
 import nltk
 import json
 import re
+from sumy.parsers.html import HtmlParser
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer as Summarizer
+from sumy.nlp.stemmers import Stemmer
+from sumy.utils import get_stop_words
 
 class BuzzFeedSpider(Spider):
 	name = "buzzfeedextractor"
@@ -18,8 +24,16 @@ class BuzzFeedSpider(Spider):
 		body = re.sub(r"\t", " ", body).strip()
 		body = re.sub(r"\s+", " ", body).strip()
 		body = re.sub('Twitter: \w+', ' ', body).strip()
-		body = nltk.tokenize.sent_tokenize(body)
-		body = map(lambda x: "<s>" + x + "</s>", body)
+
+		parser = PlaintextParser.from_string(body, Tokenizer("spanish"))
+		stemmer = Stemmer("spanish")
+
+		summarizer = Summarizer(stemmer)
+		summarizer.stop_words = get_stop_words("spanish")
+
+		body = summarizer(parser.document, 3)
+
+		body = map(lambda x: "<s>" + str(x) + "</s>", body)
 		body = " ".join(body)
 		body = re.sub(r"=", " ", body).strip()
 		body = "article=<d><p>" + body + "</p></d>"
